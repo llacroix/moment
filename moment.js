@@ -80,6 +80,7 @@
 
         // format function strings
         formatFunctions = {},
+        formatDurationFunctions = {},
 
         // tokens to ordinalize and pad
         ordinalizeTokens = 'DDD w W M D d'.split(' '),
@@ -618,6 +619,26 @@
         };
     }
 
+    function makeDurationFormatFunction(format) {
+        var array = format.match(formattingTokens), i, length;
+
+        for (i = 0, length = array.length; i < length; i++) {
+            if (formatTokenFunctions[array[i]]) {
+                array[i] = formatTokenFunctions[array[i]];
+            } else {
+                array[i] = removeFormattingTokens(array[i]);
+            }
+        }
+
+        return function (mom) {
+            var output = "";
+            for (i = 0; i < length; i++) {
+                output += array[i] instanceof Function ? array[i].call(mom, format) : array[i];
+            }
+            return output;
+        };
+    }
+
     // format date using native date object
     function formatMoment(m, format) {
 
@@ -628,6 +649,24 @@
         }
 
         return formatFunctions[format](m);
+    }
+
+    // format duration using native date object
+    // could test if m is a date or a duration to use the correct
+    // expand and formatDuration container
+    function formatMomentDuration(m, format) {
+
+        format = expandDurationFormat(format, m.lang());
+
+        if (!formatDurationFunctions[format]) {
+            formatDurationFunctions[format] = makeDurationFormatFunction(format);
+        }
+
+        return formatDurationFunctions[format](m);
+    }
+
+    function expandDurationFormat(format, lang) {
+        return format;
     }
 
     function expandFormat(format, lang) {
@@ -1155,6 +1194,8 @@
         return ret;
     };
 
+    moment.duration.defaultFormat = "[Y] [M] [D] S"
+
     // version number
     moment.version = VERSION;
 
@@ -1664,6 +1705,13 @@
             if (withSuffix) {
                 output = this.lang().pastFuture(difference, output);
             }
+
+            return this.lang().postformat(output);
+        },
+
+        format : function (inputString) {
+            var format = inputString || moment.duration.defaultFormat,
+                output = formatMomentDuration(this, format);
 
             return this.lang().postformat(output);
         },
